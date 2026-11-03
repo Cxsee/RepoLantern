@@ -354,7 +354,9 @@ td { white-space: nowrap; }
 }
 @media (max-width: 1120px) {
   .nav-shell, .nav-shell.inspector-open { grid-template-columns: 200px minmax(0, 1fr); }
-  .inspector { position: absolute; top: 55px; right: 0; bottom: 0; width: min(380px, 70%); box-shadow: -8px 0 24px rgba(0, 0, 0, 0.25); display: none; z-index: 4; }
+  /* Sotto, non sopra: un pannello sovrapposto coprirebbe le voci da cliccare. */
+  .nav-shell.inspector-open { grid-template-rows: auto minmax(0, 1fr) minmax(0, 45%); }
+  .inspector { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); display: none; }
   .nav-shell.inspector-open .inspector { display: flex; }
 }
 

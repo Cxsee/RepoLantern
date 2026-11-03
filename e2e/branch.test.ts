@@ -27,6 +27,8 @@ test("l'albero mostra branch, commit e worktree e si percorre", async () => {
   const app = await electron.launch({ args: [resolve('.'), '--lang=it', `--user-data-dir=${userData}`] })
   try {
     const page = await app.firstWindow()
+    // La misura di uno schermo piccolo: qui il pannello dei dettagli non deve coprire le voci.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 728))
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     // Senza movimento i clic non aspettano la fine della crescita.
@@ -107,6 +109,8 @@ test('si scende da branch a commit, file e righe, e si torna indietro', async ()
   const app = await electron.launch({ args: [resolve('.'), '--lang=it', `--user-data-dir=${userData}`] })
   try {
     const page = await app.firstWindow()
+    // La misura di uno schermo piccolo: qui il pannello dei dettagli non deve coprire le voci.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 728))
     const errors: string[] = []
     page.on('pageerror', (e) => errors.push(e.message))
     await page.getByRole('button', { name: /^Branch/ }).click()
@@ -181,6 +185,8 @@ test("nella vista Elenco un tratto dritto si raccoglie, si apre, e una ricerca l
   const app = await electron.launch({ args: [resolve('.'), '--lang=it', `--user-data-dir=${userData}`] })
   try {
     const page = await app.firstWindow()
+    // La misura di uno schermo piccolo: qui il pannello dei dettagli non deve coprire le voci.
+    await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].setSize(1024, 728))
     await page.getByRole('button', { name: /^Branch/ }).click()
     await page.getByRole('button', { name: 'Elenco' }).click()
     await page.getByRole('button', { name: /Testa/ }).waitFor()
