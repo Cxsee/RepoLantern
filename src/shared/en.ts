@@ -518,7 +518,7 @@ export const en = {
   'review.scopeHelp.project': 'All tracked files, at the current commit.',
   'review.runLocal': 'Run the automatic check',
   'review.runClaude': 'Review with Claude',
-  'review.confirm': 'Claude reads the changes and a clean copy of the project through your Claude Code CLI, using your plan. It can\'t write, run commands or read secret files, and secrets found in the changes are removed first. In our tests a change to 4 files cost about 0.10 $ and one to 15 files about 1.20 $; the whole project can cost more.',
+  'review.confirm': 'Claude reads the changes and a clean copy of the project through your Claude Code CLI, using your plan. It can\'t write, run commands or read secret files, and secrets found in the changes are removed first. In our few tests a change to 4 files cost about 0.10 $, one to 38 files about 0.50 $, and a whole project of 229 files about 1.60 $; a larger one can cost more.',
   'review.runningLocal': 'Checking…',
   'review.runningClaude': 'Claude is reviewing. A large change can take ten minutes or more.',
   'review.cancel': 'Cancel',

@@ -519,7 +519,7 @@ export const it: Record<Chiave, string> = {
   'review.scopeHelp.project': 'Tutti i file in git, al commit attuale.',
   'review.runLocal': 'Lancia il controllo automatico',
   'review.runClaude': 'Fai rivedere a Claude',
-  'review.confirm': 'Claude legge le modifiche e una copia pulita del progetto attraverso la tua CLI di Claude Code, usando il tuo piano. Non può scrivere, eseguire comandi o leggere file di segreti, e i segreti trovati nelle modifiche vengono tolti prima. Nelle nostre prove una modifica a 4 file è costata circa 0,10 $ e una a 15 file circa 1,20 $; tutto il progetto può costare di più.',
+  'review.confirm': 'Claude legge le modifiche e una copia pulita del progetto attraverso la tua CLI di Claude Code, usando il tuo piano. Non può scrivere, eseguire comandi o leggere file di segreti, e i segreti trovati nelle modifiche vengono tolti prima. Nelle nostre poche prove una modifica a 4 file è costata circa 0,10 $, una a 38 file circa 0,50 $ e un progetto intero di 229 file circa 1,60 $; uno più grande può costare di più.',
   'review.runningLocal': 'Sto controllando…',
   'review.runningClaude': 'Claude sta rivedendo. Una modifica grande può richiedere dieci minuti o più.',
   'review.cancel': 'Annulla',

@@ -25,7 +25,7 @@ The demo runs on a fictional repository with a flaw planted on purpose ([`script
 
 Optional, if you already have the [Claude Code](https://claude.com/product/claude-code) CLI installed and signed in:
 
-- **Review with Claude (experimental).** Like a careful reviewer on your changes: a summary, then findings with severity, confidence, what they need to happen and how to fix them. It runs read-only on a clean copy, secrets are removed first, and every cited line is checked against the code. The reasoning is still a model's judgement, so this is not a security audit. It uses your Claude plan: in our few tests, a change to 4 files cost about $0.10 and one to 15 files about $1.20 and 10 minutes.
+- **Review with Claude (experimental).** Like a careful reviewer on your changes: a summary, then findings with severity, confidence, what they need to happen and how to fix them. It runs read-only on a clean copy, secrets are removed first, and every cited line is checked against the code. The reasoning is still a model's judgement, so this is not a security audit. It uses your Claude plan: in our few tests, a change to 4 files cost about $0.10, one to 38 files about $0.50, and a whole small project (229 files) about $1.60 and 7 minutes. On mature code expect some overstated findings: in our check on two open-source projects, 3 of 6 were real, 3 overstated and none invented.
 - **Claude.** A chat that runs through your own CLI. RepoLantern stores no keys and offers no login of its own.
 - **Experimental map.** A generated overview of the code. It can be wrong, so treat it as a starting point and check it against the code.
 
