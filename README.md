@@ -8,6 +8,10 @@ It works without AI and without an account. It never runs anything from your pro
 
 > Status: early. Windows only for now.
 
+![Demo: how to run a project, search its code, review a branch with Claude and send a real flaw to To do. The Claude wait is sped up.](docs/demo/repolantern-demo.gif)
+
+The demo runs on a fictional repository with a flaw planted on purpose ([`scripts/demo-repo.mjs`](scripts/demo-repo.mjs)). The Claude review is real; only the wait is sped up.
+
 ![How to run it: commands from the project's guide, each with its source](docs/screens/how-to-run.png)
 
 ## What it does
