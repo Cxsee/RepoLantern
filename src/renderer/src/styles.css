@@ -90,6 +90,10 @@ button:disabled { opacity: 0.45; cursor: default; }
 .review-ambito { display: grid; gap: 6px; margin: var(--space) 0; }
 .review-ambito label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .review-ambito input { width: auto; flex: none; margin: 0; }
+.home-inizio { padding: var(--space); margin-bottom: calc(var(--space) * 2); }
+.home-inizio ol { margin: 8px 0; padding-left: 20px; }
+.review-giudizio { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.review-correzione { margin-top: var(--space); padding: var(--space); }
 .review-voci { list-style: none; margin: 0; padding: 0; }
 .review-voce { padding: var(--space) 0; border-top: 1px solid var(--line); }
 .review-voce p { margin: 4px 0; overflow-wrap: anywhere; }

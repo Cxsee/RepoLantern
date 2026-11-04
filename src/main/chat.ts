@@ -41,9 +41,10 @@ export function claudeArgs(resumeId: string | null, opzioni: { chrome?: boolean 
 }
 
 export async function findClaude(): Promise<string> {
-  const { stdout } = await run('where.exe', ['claude']).catch(() => ({ stdout: '' }))
-  const found = stdout.split(/\r?\n/).map((l) => l.trim()).find((l) => /\.exe$/i.test(l))
-  const fallback = join(homedir(), '.local', 'bin', 'claude.exe')
+  const windows = process.platform === 'win32'
+  const { stdout } = await run(windows ? 'where.exe' : 'which', ['claude']).catch(() => ({ stdout: '' }))
+  const found = stdout.split(/\r?\n/).map((l) => l.trim()).find((l) => (windows ? /\.exe$/i.test(l) : l !== ''))
+  const fallback = join(homedir(), '.local', 'bin', windows ? 'claude.exe' : 'claude')
   if (found) return found
   if (existsSync(fallback)) return fallback
   throw new Error(t('chat.notInstalled'))

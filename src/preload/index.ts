@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 const call = (channel: string) => (...args: unknown[]) => ipcRenderer.invoke(channel, ...args)
 
 contextBridge.exposeInMainWorld('hub', {
+  diagnostic: call('diagnostic:report'),
   lingua: {
     get: call('lingua:get'),
     set: call('lingua:set')
@@ -66,6 +67,11 @@ contextBridge.exposeInMainWorld('hub', {
     last: call('review:last'),
     local: call('review:local'),
     claude: call('review:claude'),
+    judge: call('review:judge'),
+    judgements: call('review:judgements'),
+    proposeFix: call('review:proposeFix'),
+    applyFix: call('review:applyFix'),
+    undoFix: call('review:undoFix'),
     todo: call('review:todo')
   },
   doctor: {

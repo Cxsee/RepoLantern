@@ -2,8 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain, nativeTheme, screen, shell } from 
 import { execFile, spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { existsSync, unwatchFile, watch, watchFile, type FSWatcher } from 'node:fs'
-import { homedir } from 'node:os'
-import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
+import { homedir, release } from 'node:os'
+import { mkdir, readFile, realpath, rename, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, normalize, resolve } from 'node:path'
 import { promisify } from 'node:util'
 import { lingua, linguaDaLocale, setLingua, t, type Chiave, type Lingua } from '../shared/i18n.ts'
@@ -16,7 +16,10 @@ import { readBranch, readBranchDiff, readCommit, readCommitDiff, readGraph, read
 import { addRepo, isKnown, listRepos, removeRepo, setActive } from './repos'
 import { nextDelay, readSocial, refreshSocial, sessionPrompt, setSocialInterval, startEmulator } from './social'
 import { datiVecchiDisponibili, importaDatiVecchi, Pianificatore, propostaSocial, SOCIAL_VUOTO, validaSocial, type ConfigSocial } from './moduli'
-import { buildPrompt, prepare, scanLines, todoKey, todoText, verify, type Prepared, type Report, type Scope } from './review'
+import { applyChallenge, buildChallenge, buildPrompt, findRelated, needsChallenge, prepare, scanLines, todoKey, todoText, verify, type Prepared, type Report, type Scope } from './review'
+import { applyEdits, buildFixPrompt, fileHash, parseProposal } from './fix'
+import { diagnosticReport } from './diagnostica'
+import { findClaude } from './chat'
 import { visita } from './doctor'
 import { branoFile, cercaNelCodice } from './ricercaCodice'
 import { dentroLaRepo, git, leggiTesto, SEGRETO, sorvegliaGit } from './scansione'
@@ -32,6 +35,8 @@ let statusTimer: NodeJS.Timeout | undefined
 
 const run = promisify(execFile)
 const claudeDir = join(homedir(), '.claude')
+// Enough to undo while the app is open and the file is as we left it; after that, git is the way back.
+const primaDellaCorrezione = new Map<string, { testo: string; dopo: string }>()
 const reposFile = (): string => join(app.getPath('userData'), 'repos.json')
 const linguaFile = (): string => join(app.getPath('userData'), 'lingua.json')
 const leggiLingua = async (): Promise<Lingua> => {
@@ -96,6 +101,10 @@ const overlayColors = (): { color: string; symbolColor: string; height: number }
 
 function openTerminal(cwd: string): void {
   const detached = { detached: true, stdio: 'ignore' } as const
+  if (process.platform !== 'win32') {
+    spawn('x-terminal-emulator', [], { ...detached, cwd }).on('error', () => {}).unref()
+    return
+  }
   const terminal = spawn('wt.exe', ['-d', cwd], detached)
   terminal.on('error', () => spawn('cmd.exe', [], { ...detached, cwd }).on('error', () => {}).unref())
   terminal.unref()
@@ -219,6 +228,13 @@ function registerIpc(): void {
   })
   repoHandler('preferenze:sezione', async (repo) => (await apriArchivio(repo)).db.preferenza<string | null>('sezione', null))
   repoHandler('preferenze:scriviSezione', async (repo, id: unknown) => (await apriArchivio(repo)).db.scriviPreferenza('sezione', String(id).slice(0, 40)))
+  ipcMain.handle('diagnostic:report', async () => {
+    const { repos } = await listRepos(reposFile())
+    const errori = await Promise.all(repos.filter((r) => archivi.has(r.path)).map(async (r) => (await apriArchivio(r.path)).db.lavori().map((l) => l.errore).filter((e): e is string => Boolean(e))))
+    const versioneGit = await promisify(execFile)('git', ['--version']).then((r) => r.stdout.trim(), () => null)
+    const claude = await findClaude().then(() => true, () => false)
+    return diagnosticReport({ app: app.getVersion(), electron: process.versions.electron, node: process.versions.node, os: `${process.platform} ${release()}`, language: lingua(), git: versioneGit, claude, repos: repos.length, errors: errori.flat() }, [...repos.map((r) => r.path), homedir()])
+  })
   ipcMain.handle('lingua:get', () => lingua())
   ipcMain.handle('lingua:set', async (_e, l: unknown) => {
     if (l !== 'en' && l !== 'it') return
@@ -350,7 +366,7 @@ function registerIpc(): void {
     const p = await preparaReview(repo, scope)
     if (p.empty) return null
     const { lavori } = await apriArchivio(repo)
-    const { prompt, skipped } = buildPrompt(p)
+    const { prompt, skipped } = buildPrompt(p, await findRelated(repo, p))
     const id = lavori.accoda(t('review.jobTitle'), prompt, undefined, undefined, p.commit)
     const l = await lavori.attendi(id)
     if (l.stato !== 'finito') throw new Error(l.errore ?? t(`job.${l.stato}` as Chiave))
@@ -363,7 +379,67 @@ function registerIpc(): void {
       const testo = perFile.has(file) ? await lettore.leggi(file) : null
       return testo === null ? null : testo.split(/\r?\n/).map((text, i) => ({ line: i + 1, text }))
     }
-    return salvaReview(repo, p, { ...(await verify(dati, righeDi)), cost: l.costo ?? 0, seconds: Math.round((l.durata ?? 0) / 1000) }, skipped)
+    const primo = await verify(dati, righeDi)
+    let [findings, costo, durata, challenged, challengeFailed] = [primo.findings, l.costo ?? 0, l.durata ?? 0, 0, false]
+    const daControllare = findings.filter(needsChallenge).slice(0, 10)
+    if (daControllare.length) {
+      // If the second reader fails, the first result is still worth showing, and the screen says it wasn't double-checked.
+      const dopo = await lavori.attendi(lavori.accoda(t('review.jobTitleChallenge'), buildChallenge(daControllare, p), undefined, undefined, p.commit))
+      costo += dopo.costo ?? 0
+      durata += dopo.durata ?? 0
+      const risposta = dopo.stato === 'finito' ? estraiJson(dopo.esito ?? '') : null
+      if (risposta === null) challengeFailed = true
+      else {
+        const rivisti = applyChallenge(daControllare, risposta)
+        findings = findings.map((f) => rivisti[daControllare.indexOf(f)] ?? f)
+        challenged = daControllare.length
+      }
+    }
+    return salvaReview(repo, p, { summary: primo.summary, discarded: primo.discarded, findings, cost: costo, seconds: Math.round(durata / 1000), challenged, challengeFailed }, skipped)
+  })
+  repoHandler('review:judge', async (repo, chiave: unknown, giudizio: unknown) => {
+    const { db } = await apriArchivio(repo)
+    const tutti = db.preferenza<Record<string, string>>('review:giudizi', {})
+    if (giudizio === 'real' || giudizio === 'false' || giudizio === 'overrated') tutti[String(chiave).slice(0, 700)] = giudizio
+    else delete tutti[String(chiave).slice(0, 700)]
+    db.scriviPreferenza('review:giudizi', tutti)
+    return tutti
+  })
+  repoHandler('review:judgements', async (repo) => (await apriArchivio(repo)).db.preferenza<Record<string, string>>('review:giudizi', {}))
+  const fileDaCorreggere = async (repo: string, file: unknown): Promise<string> => {
+    const vero = await dentroLaRepo(await realpath(repo), String(file))
+    if (!vero || SEGRETO.test(basename(vero))) throw new Error(t('fix.badFile'))
+    return vero
+  }
+  repoHandler('review:proposeFix', async (repo, f: { title: string; file: string; line: number; why: string; fix: string }) => {
+    const vero = await fileDaCorreggere(repo, f?.file)
+    const testo = await readFile(vero, 'utf8')
+    const commit = (await git(repo, 'rev-parse', '--verify', 'HEAD^{commit}')).trim()
+    const { lavori } = await apriArchivio(repo)
+    const l = await lavori.attendi(lavori.accoda(t('fix.jobTitle'), buildFixPrompt(f, testo), undefined, undefined, commit))
+    if (l.stato !== 'finito') throw new Error(l.errore ?? t(`job.${l.stato}` as Chiave))
+    const p = parseProposal(estraiJson(l.esito ?? ''))
+    if (!p) throw new Error(t('fix.badAnswer'))
+    if (p.edits.length && applyEdits(testo, p.edits) === null) throw new Error(t('fix.noMatch'))
+    return { ...p, hash: fileHash(testo), cost: l.costo ?? 0 }
+  })
+  repoHandler('review:applyFix', async (repo, file: unknown, edits: { search: string; replace: string }[], hash: unknown) => {
+    const vero = await fileDaCorreggere(repo, file)
+    const testo = await readFile(vero, 'utf8')
+    if (fileHash(testo) !== hash) throw new Error(t('fix.stale'))
+    const nuovo = applyEdits(testo, edits)
+    if (nuovo === null) throw new Error(t('fix.noMatch'))
+    await writeFile(`${vero}.repolantern-tmp`, nuovo)
+    await rename(`${vero}.repolantern-tmp`, vero)
+    primaDellaCorrezione.set(vero, { testo, dopo: fileHash(nuovo) })
+  })
+  repoHandler('review:undoFix', async (repo, file: unknown) => {
+    const vero = await fileDaCorreggere(repo, file)
+    const prima = primaDellaCorrezione.get(vero)
+    if (!prima || fileHash(await readFile(vero, 'utf8')) !== prima.dopo) throw new Error(t('fix.cantUndo'))
+    await writeFile(`${vero}.repolantern-tmp`, prima.testo)
+    await rename(`${vero}.repolantern-tmp`, vero)
+    primaDellaCorrezione.delete(vero)
   })
   repoHandler('review:todo', async (repo, f: { title?: unknown; file?: unknown; line?: unknown }, commit: unknown) => {
     if (typeof f?.title !== 'string' || !f.title.trim() || typeof f.file !== 'string' || !f.file.trim()) throw new Error(t('review.badFinding'))

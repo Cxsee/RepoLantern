@@ -41,7 +41,55 @@ function Local({ repo, f, commit }: { repo: string; f: ReviewLocalFinding; commi
   )
 }
 
-function Problem({ repo, f, commit }: { repo: string; f: ReviewFinding; commit: string }) {
+const JUDGEMENTS = ['real', 'false', 'overrated'] as const
+
+function Judge({ repo, id, value, onChange }: { repo: string; id: string; value?: string; onChange: (all: Record<string, string>) => void }) {
+  return (
+    <span className="review-giudizio" role="group" aria-label={t('review.judge')}>
+      {JUDGEMENTS.map((j) => (
+        <button key={j} className={value === j ? 'small' : 'ghost small'} aria-pressed={value === j} onClick={() => void window.hub.review.judge(repo, id, value === j ? null : j).then(onChange)}>{t(`review.judge.${j}` as Chiave)}</button>
+      ))}
+    </span>
+  )
+}
+
+function Fix({ repo, f }: { repo: string; f: ReviewFinding }) {
+  const [state, setState] = useState<'idle' | 'busy' | 'applied'>('idle')
+  const [p, setP] = useState<{ explanation: string; edits: { search: string; replace: string }[]; hash: string; cost: number } | null>(null)
+  const [error, setError] = useState('')
+  if (state === 'applied') {
+    return (
+      <p className="meta">
+        {t('fix.applied')} <button className="ghost small" onClick={() => window.hub.review.undoFix(repo, f.file).then(() => { setP(null); setState('idle') }, (e) => setError(message(e)))}>{t('fix.undo')}</button>
+        {error && <span className="error" role="alert"> {error}</span>}
+      </p>
+    )
+  }
+  if (state === 'busy') return <p className="muted">{t('fix.busy')}</p>
+  return (
+    <>
+      {!p && <Conferma testo={t('fix.confirm')} avvia={t('fix.propose')} onAvvia={() => {
+        setState('busy')
+        setError('')
+        window.hub.review.proposeFix(repo, f).then(setP, (e) => setError(message(e))).finally(() => setState('idle'))
+      }} />}
+      {error && <p className="error" role="alert">{error}</p>}
+      {p && (
+        <div className="frame review-correzione">
+          <p>{p.explanation}</p>
+          <p className="meta">{t('fix.note', { cost: p.cost.toFixed(2) })}</p>
+          {p.edits.map((e, i) => <pre className="output pannello-codice" key={i}>{e.search.split(/\r?\n/).map((l) => `- ${l}`).join('\n')}{'\n'}{e.replace.split(/\r?\n/).map((l) => `+ ${l}`).join('\n')}</pre>)}
+          <div className="ante-azioni">
+            {p.edits.length > 0 && <button onClick={() => window.hub.review.applyFix(repo, f.file, p.edits, p.hash).then(() => setState('applied'), (e) => setError(message(e)))}>{t('fix.apply')}</button>}
+            <button className="ghost" onClick={() => setP(null)}>{t('fix.discard')}</button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+function Problem({ repo, f, commit, judgement, onJudge }: { repo: string; f: ReviewFinding; commit: string; judgement?: string; onJudge: (all: Record<string, string>) => void }) {
   return (
     <li className="review-voce">
       <p>
@@ -52,15 +100,22 @@ function Problem({ repo, f, commit }: { repo: string; f: ReviewFinding; commit: 
       <p><strong>{f.title}</strong></p>
       <p>{f.why}</p>
       <p className="meta">{t('review.conditions', { text: f.conditions })}</p>
+      {f.challenge && f.challenge.verdict !== 'stands' && <p className="meta"><span className="pill warn">{f.challenge.verdict === 'contested' ? t('review.contested') : f.challenge.verdict === 'disputed' ? t('review.disputed') : t('review.downgraded', { level: t(`review.level.${f.challenge.was}` as Chiave) })}</span> {f.challenge.reason}</p>}
       <p>{t('review.fix', { text: f.fix })}</p>
       <p className="meta"><Origin repo={repo} file={f.file} line={f.line} /> <AddTodo repo={repo} title={f.title} file={f.file} line={f.line} commit={commit} /></p>
+      <p className="meta">{t('review.judge')} <Judge repo={repo} id={`${f.title} — ${f.file}:${f.line}`} value={judgement} onChange={onJudge} /></p>
+      <Fix repo={repo} f={f} />
     </li>
   )
 }
 
 function Results({ repo, r, head }: { repo: string; r: ReviewReport; head: string | null }) {
+  const [judgements, setJudgements] = useState<Record<string, string>>({})
+  useEffect(() => {
+    void window.hub.review.judgements(repo).then(setJudgements, () => {})
+  }, [repo])
   const c = r.claude
-  const findings = c ? [...c.findings].sort((a, b) => RANK[a.severity] - RANK[b.severity] || RANK[a.confidence] - RANK[b.confidence]) : []
+  const findings = c ? [...c.findings].sort((a, b) => Number(a.challenge?.verdict === 'disputed') - Number(b.challenge?.verdict === 'disputed') || RANK[a.severity] - RANK[b.severity] || RANK[a.confidence] - RANK[b.confidence]) : []
   const counts = r.skipped.reduce<Record<string, number>>((all, s) => ({ ...all, [s.reason]: (all[s.reason] ?? 0) + 1 }), {})
   const incomplete = r.skipped.some((s) => s.reason === 'budget' || s.reason === 'large')
   return (
@@ -81,7 +136,9 @@ function Results({ repo, r, head }: { repo: string; r: ReviewReport; head: strin
           {c.summary && <p>{c.summary}</p>}
           <p className="meta">{t('review.claudeNote', { cost: c.cost.toFixed(2), seconds: c.seconds })}</p>
           {c.discarded > 0 && <p className="meta">{t('review.discarded', { n: c.discarded })}</p>}
-          {findings.length ? <ul className="review-voci">{findings.map((f) => <Problem key={`${f.file}${f.line}${f.title}`} repo={repo} f={f} commit={r.commit} />)}</ul> : <p>{t('review.noFindings')}</p>}
+          {(c.challenged ?? 0) > 0 && <p className="meta">{t('review.challenged', { n: c.challenged ?? 0 })}</p>}
+          {c.challengeFailed && <p className="error" role="status">{t('review.challengeFailed')}</p>}
+          {findings.length ? <ul className="review-voci">{findings.map((f) => <Problem key={`${f.file}${f.line}${f.title}`} repo={repo} f={f} commit={r.commit} judgement={judgements[`${f.title} — ${f.file}:${f.line}`]} onJudge={setJudgements} />)}</ul> : <p>{t('review.noFindings')}</p>}
         </section>
       )}
       <section>
@@ -130,7 +187,7 @@ export function ReviewZone({ repo }: { repo: string }) {
   }, [])
 
   const cancel = (): void => {
-    void window.hub.lavori.elenco(repo).then((all) => all.find((l) => l.titolo === t('review.jobTitle') && (l.stato === 'in-corso' || l.stato === 'in-coda'))).then((l) => l && window.hub.lavori.annulla(repo, l.id))
+    void window.hub.lavori.elenco(repo).then((all) => all.find((l) => (l.titolo === t('review.jobTitle') || l.titolo === t('review.jobTitleChallenge')) && (l.stato === 'in-corso' || l.stato === 'in-coda'))).then((l) => l && window.hub.lavori.annulla(repo, l.id))
   }
 
   return (

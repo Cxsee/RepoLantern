@@ -25,6 +25,38 @@ const altraCartella = (path: string, repo: string): string => {
   return norma(path) === norma(repo) ? '' : t('home.folder', { name: path.replaceAll('\\', '/').split('/').pop() ?? '' })
 }
 
+const CHIAVE_INIZIO = 'repolantern.start.done'
+const inizioChiuso = (): boolean => {
+  try {
+    return localStorage.getItem(CHIAVE_INIZIO) === '1'
+  } catch {
+    return false
+  }
+}
+
+// For someone opening a project they don't know: three steps in the order that pays off.
+function DaDoveIniziare({ onZona }: { onZona: (id: string) => void }) {
+  const [chiuso, setChiuso] = useState(inizioChiuso)
+  if (chiuso) return null
+  const chiudi = (): void => {
+    setChiuso(true)
+    try {
+      localStorage.setItem(CHIAVE_INIZIO, '1')
+    } catch {}
+  }
+  return (
+    <section className="frame home-inizio" aria-label={t('home.start.title')}>
+      <h2>{t('home.start.title')}</h2>
+      <ol>
+        <li><button className="link" onClick={() => onZona('avvio')}>{t('home.start.run')}</button></li>
+        <li>{t('home.start.search')}</li>
+        <li><button className="link" onClick={() => onZona('review')}>{t('home.start.review')}</button></li>
+      </ol>
+      <button className="ghost small" onClick={chiudi}>{t('home.start.close')}</button>
+    </section>
+  )
+}
+
 export function HomeZone({ repo, onZona, onBranch }: { repo: string; onZona: (id: string) => void; onBranch: (d: Destinazione) => void }) {
   const [r, setR] = useState<RiassuntoHome | null>(null)
   const [error, setError] = useState('')
@@ -66,6 +98,7 @@ export function HomeZone({ repo, onZona, onBranch }: { repo: string; onZona: (id
   const inCorso = r.worktree.length + r.sessioni.length + r.lavori.length
   return (
     <div className="home">
+      <DaDoveIniziare onZona={onZona} />
       {error && <p className="error" role="alert">{error}</p>}
       <section>
         <h2>{r.primaVolta ? t('home.latestCommits') : r.nuovi.length ? t('home.newCommits') : t('home.noNewCommits')}</h2>

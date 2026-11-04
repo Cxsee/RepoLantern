@@ -28,7 +28,7 @@ export async function copiaPulita(repo: string, segnale?: AbortSignal, rev = 'HE
   })
   const cartella = await mkdtemp(join(tmpdir(), 'hub-lavoro-'))
   // Il tar di Windows, non quello di Git Bash che scambierebbe C: per un host remoto.
-  const tarExe = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe')
+  const tarExe = process.platform === 'win32' ? join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'tar.exe') : 'tar'
   try {
     const archivio = spawn('git', ['archive', '--format=tar', commit, '--', '.', ...esclusi], { cwd: repo, stdio: ['ignore', 'pipe', 'ignore'], windowsHide: true, signal: segnale })
     const tar = spawn(tarExe, ['-x', '-f', '-', '-C', cartella], { stdio: ['pipe', 'ignore', 'ignore'], windowsHide: true, signal: segnale })

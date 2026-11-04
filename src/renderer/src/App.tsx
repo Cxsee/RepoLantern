@@ -29,6 +29,7 @@ export function App() {
   const [moduli, setModuli] = useState<ReadonlySet<string>>(new Set())
   // Social è un modulo su misura: si propone solo a chi ha già una configurazione o dei dati.
   const [socialPossibile, setSocialPossibile] = useState(false)
+  const [copiato, setCopiato] = useState(false)
   const [error, setError] = useState('')
   const [attention, setAttention] = useState(0)
   const [chatRequest, setChatRequest] = useState<ChatRequest | null>(null)
@@ -153,6 +154,7 @@ export function App() {
         {usable && socialPossibile && !moduli.has('social') && <button className="ghost small" onClick={() => setZone(ATTIVA_SOCIAL)}>{t('app.activateSocial')}</button>}
         {active && <button className="ghost small" onClick={() => apply(window.hub.repos.remove(active.path))}>{t('app.removeRepo', { name: active.nome })}</button>}
         <label className="meta">{t('language.label')} <select value={lingua()} onChange={(e) => void window.hub.lingua.set(e.target.value as 'en' | 'it')}><option value="en">English</option><option value="it">Italiano</option></select></label>
+        <button className="ghost small" onClick={() => void window.hub.diagnostic().then((r) => navigator.clipboard.writeText(r)).then(() => setCopiato(true), (e) => setError(message(e)))}>{copiato ? t('app.diagnosticCopied') : t('app.diagnostic')}</button>
       </nav>
       <main className={zone === 'claude' ? 'main-chat' : zone === 'branch' ? 'main-chat main-branch' : ''}>
         <header className="zone-head">
