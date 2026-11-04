@@ -12,7 +12,7 @@
     "test": "node --test \"src/**/*.test.ts\"",
     "test:e2e": "electron-vite build && node --test --test-concurrency=1 --test-timeout=180000 --test-force-exit e2e/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "dist": "electron-vite build && electron-builder --win nsis"
+    "dist": "electron-vite build && electron-builder --win nsis --publish never"
   },
   "build": {
     "appId": "io.github.cxsee.repolantern",
