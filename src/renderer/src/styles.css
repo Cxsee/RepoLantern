@@ -87,6 +87,12 @@ button:disabled { opacity: 0.45; cursor: default; }
 .zone svg { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .zone:hover:not(:disabled) { background: var(--surface); color: var(--text); }
 .zone.on { background: var(--surface-2); color: var(--text); font-weight: 500; box-shadow: inset 2px 0 0 var(--accent); }
+.review-ambito { display: grid; gap: 6px; margin: var(--space) 0; }
+.review-ambito label { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+.review-ambito input { width: auto; flex: none; margin: 0; }
+.review-voci { list-style: none; margin: 0; padding: 0; }
+.review-voce { padding: var(--space) 0; border-top: 1px solid var(--line); }
+.review-voce p { margin: 4px 0; overflow-wrap: anywhere; }
 .gruppo-claude { margin: calc(var(--space) * 2) 0 4px; }
 .zone-index { margin-left: auto; font: 11px var(--mono); color: var(--muted); }
 .badge { margin-left: auto; min-width: 20px; padding: 0 6px; border-radius: 10px; background: var(--warn); color: #241600; font: 600 12px/20px var(--mono); text-align: center; }

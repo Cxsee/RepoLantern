@@ -6,16 +6,17 @@ import { homedir } from 'node:os'
 import { mkdir, readFile, realpath, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, normalize, resolve } from 'node:path'
 import { promisify } from 'node:util'
-import { lingua, linguaDaLocale, setLingua, t, type Lingua } from '../shared/i18n.ts'
+import { lingua, linguaDaLocale, setLingua, t, type Chiave, type Lingua } from '../shared/i18n.ts'
 import { readAgents } from './agents'
 import { Archivio, statoVersione } from './archivio'
 import { Lavori } from './lavori'
-import { contesto, Ricavo } from './mappa'
+import { contesto, estraiJson, lettoreDaCommit, Ricavo } from './mappa'
 import { Chats, readHistory, readRecent, saveRecent, type Decision } from './chat'
 import { readBranch, readBranchDiff, readCommit, readCommitDiff, readGraph, readWorktreeChanges, readWorktreeDiff } from './gitnav'
 import { addRepo, isKnown, listRepos, removeRepo, setActive } from './repos'
 import { nextDelay, readSocial, refreshSocial, sessionPrompt, setSocialInterval, startEmulator } from './social'
 import { datiVecchiDisponibili, importaDatiVecchi, Pianificatore, propostaSocial, SOCIAL_VUOTO, validaSocial, type ConfigSocial } from './moduli'
+import { buildPrompt, prepare, scanLines, todoKey, todoText, verify, type Prepared, type Report, type Scope } from './review'
 import { visita } from './doctor'
 import { branoFile, cercaNelCodice } from './ricercaCodice'
 import { dentroLaRepo, git, leggiTesto, SEGRETO, sorvegliaGit } from './scansione'
@@ -324,6 +325,52 @@ function registerIpc(): void {
     if (!o?.percorso) return o && { ...o, anteprima: null, commitAnteprima: null }
     const commit = await git(repo, 'rev-parse', '--verify', '--quiet', 'HEAD').then((c) => c.trim(), () => null)
     return { ...o, anteprima: await contesto(repo, commit, o.percorso, 1, 500), commitAnteprima: commit }
+  })
+  const preparaReview = async (repo: string, scope: unknown): Promise<Prepared> => {
+    if (scope !== 'local' && scope !== 'branch' && scope !== 'project') throw new Error(t('review.badScope'))
+    await git(repo, 'rev-parse', '--verify', 'HEAD^{commit}').catch(() => {
+      throw new Error(t('review.noCommits'))
+    })
+    return prepare(repo, scope as Scope, (await readStatus(repo)).base, (file) => leggiTesto(repo, file))
+  }
+  const salvaReview = async (repo: string, p: Prepared, claude: Report['claude'], altri: Prepared['skipped'] = []): Promise<Report> => {
+    const report: Report = { scope: p.scope, commit: p.commit, base: p.base, when: new Date().toISOString(), reviewed: p.files.length - altri.length, skipped: [...p.skipped, ...altri], local: p.files.flatMap((f) => scanLines(f.file, f.lines)).slice(0, 200), claude }
+    ;(await apriArchivio(repo)).db.scriviPreferenza('review:ultima', report)
+    return report
+  }
+  repoHandler('review:last', async (repo) => ({
+    report: (await apriArchivio(repo)).db.preferenza<Report | null>('review:ultima', null),
+    head: (await git(repo, 'rev-parse', '--verify', 'HEAD^{commit}').catch(() => '')).trim() || null
+  }))
+  repoHandler('review:local', async (repo, scope: unknown) => {
+    const p = await preparaReview(repo, scope)
+    return p.empty ? null : salvaReview(repo, p, null)
+  })
+  repoHandler('review:claude', async (repo, scope: unknown) => {
+    const p = await preparaReview(repo, scope)
+    if (p.empty) return null
+    const { lavori } = await apriArchivio(repo)
+    const { prompt, skipped } = buildPrompt(p)
+    const id = lavori.accoda(t('review.jobTitle'), prompt, undefined, undefined, p.commit)
+    const l = await lavori.attendi(id)
+    if (l.stato !== 'finito') throw new Error(l.errore ?? t(`job.${l.stato}` as Chiave))
+    const dati = estraiJson(l.esito ?? '')
+    if (dati === null) throw new Error(t('review.badAnswer'))
+    const perFile = new Map(p.files.map((f) => [f.file, f.lines]))
+    const lettore = p.scope === 'project' ? await lettoreDaCommit(repo, p.commit) : null
+    const righeDi = async (file: string) => {
+      if (!lettore) return perFile.get(file) ?? null
+      const testo = perFile.has(file) ? await lettore.leggi(file) : null
+      return testo === null ? null : testo.split(/\r?\n/).map((text, i) => ({ line: i + 1, text }))
+    }
+    return salvaReview(repo, p, { ...(await verify(dati, righeDi)), cost: l.costo ?? 0, seconds: Math.round((l.durata ?? 0) / 1000) }, skipped)
+  })
+  repoHandler('review:todo', async (repo, f: { title?: unknown; file?: unknown; line?: unknown }, commit: unknown) => {
+    if (typeof f?.title !== 'string' || !f.title.trim() || typeof f.file !== 'string' || !f.file.trim()) throw new Error(t('review.badFinding'))
+    const voce = { title: f.title.slice(0, 200), file: f.file.slice(0, 400), line: Number(f.line) || 1 }
+    if ((await readTodos(repo)).some((x) => x.testo.startsWith(todoKey(voce)))) return false
+    await addTodo(repo, todoText(voce, String(commit)))
+    return true
   })
   repoHandler('doctor:visita', async (repo) => {
     const elenco = (await git(repo, 'ls-files', '-z', '--cached', '--others', '--exclude-standard')).split('\0').filter(Boolean)

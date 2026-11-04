@@ -62,6 +62,12 @@ contextBridge.exposeInMainWorld('hub', {
       return () => ipcRenderer.off('lavoro-cambiato', listener)
     }
   },
+  review: {
+    last: call('review:last'),
+    local: call('review:local'),
+    claude: call('review:claude'),
+    todo: call('review:todo')
+  },
   doctor: {
     visita: call('doctor:visita')
   },

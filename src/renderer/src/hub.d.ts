@@ -12,6 +12,11 @@ export type RefertoDoctor = {
   nonEsaminati: number
 }
 export type Occorrenza = { file: string; riga: number; testo: string; tipo: 'definizione' | 'codice' | 'test' | 'documento'; nonTracciato?: boolean }
+export type ReviewScope = 'local' | 'branch' | 'project'
+export type ReviewLevel = 'high' | 'medium' | 'low'
+export type ReviewLocalFinding = { rule: string; kind: 'secret' | 'pattern'; file: string; line: number; excerpt: string }
+export type ReviewFinding = { category: 'vulnerability' | 'issue' | 'suggestion'; severity: ReviewLevel; confidence: ReviewLevel; file: string; line: number; title: string; why: string; conditions: string; fix: string; quote: string }
+export type ReviewReport = { scope: ReviewScope; commit: string; base: string | null; when: string; reviewed: number; skipped: { file: string; reason: string }[]; local: ReviewLocalFinding[]; claude: { summary: string; findings: ReviewFinding[]; discarded: number; cost: number; seconds: number } | null }
 export type RisultatiCodice = { voci: Occorrenza[]; altri: number; parole?: string[]; esatte?: number }
 export type BranoFile = { inizio: number; righe: string[]; totale: number }
 export type DocTodo = { file: string; riga: number; testo: string; sezione?: string }
@@ -108,6 +113,12 @@ declare global {
         elenco(repo: string): Promise<{ id: string; titolo: string; stato: string; costo: number | null; durata: number | null; errore: string | null }[]>
         annulla(repo: string, id: string): Promise<void>
         onChange(fn: (repo: string, id: string, evento: string | null) => void): () => void
+      }
+      review: {
+        last(repo: string): Promise<{ report: ReviewReport | null; head: string | null }>
+        local(repo: string, scope: ReviewScope): Promise<ReviewReport | null>
+        claude(repo: string, scope: ReviewScope): Promise<ReviewReport | null>
+        todo(repo: string, finding: { title: string; file: string; line: number }, commit: string): Promise<boolean>
       }
       doctor: {
         visita(repo: string): Promise<RefertoDoctor>

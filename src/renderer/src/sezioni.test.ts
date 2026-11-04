@@ -5,7 +5,7 @@ import { sezioneValida, sezioniDi, soloUltima } from './sezioni.ts'
 test('una sezione di modulo compare solo se il modulo è attivo', () => {
   assert.ok(!sezioniDi(new Set()).some((s) => s.id === 'social'))
   assert.ok(sezioniDi(new Set(['social'])).some((s) => s.id === 'social'))
-  assert.deepEqual(sezioniDi(new Set()).map((s) => s.id), ['home', 'avvio', 'todo', 'stato', 'branch', 'claude', 'anteprima'])
+  assert.deepEqual(sezioniDi(new Set()).map((s) => s.id), ['home', 'avvio', 'todo', 'stato', 'branch', 'review', 'claude', 'anteprima'])
 })
 
 test('una sezione salvata che non esiste più riporta alla prima', () => {

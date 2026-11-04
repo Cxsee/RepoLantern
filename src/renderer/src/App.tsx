@@ -6,6 +6,7 @@ import { message } from './errors'
 import type { RepoList } from './hub'
 import { sezioneValida, sezioniDi, soloUltima } from './sezioni'
 import { DoctorZone } from './DoctorZone'
+import { ReviewZone } from './ReviewZone'
 import { AnteprimaZone } from './AnteprimaZone'
 import { HomeZone, type Destinazione } from './HomeZone'
 import type { DestinazioneOggetto } from './hub'
@@ -194,6 +195,8 @@ export function App() {
           />
         ) : zone === 'claude' ? null : zone === 'avvio' ? (
           <DoctorZone key={active.path} repo={active.path} />
+        ) : zone === 'review' ? (
+          <ReviewZone key={active.path} repo={active.path} />
         ) : zone === 'anteprima' ? (
           <AnteprimaZone key={active.path} repo={active.path} funzione={funzioneDa?.repo === active.path ? funzioneDa.id : null} onFunzione={consumaFunzione} />
         ) : zone === ATTIVA_SOCIAL ? (

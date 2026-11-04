@@ -9,6 +9,7 @@ export const SEZIONI: Sezione[] = [
   { id: 'todo', get nome() { return t('nav.todo') }, icona: 'M5 7l2 2 3-4M5 16l2 2 3-4M14 8h6M14 17h6' },
   { id: 'stato', get nome() { return t('nav.stato') }, icona: 'M3 12h4l3-7 4 14 3-7h4' },
   { id: 'branch', get nome() { return t('nav.branch') }, icona: 'M6 3v12M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 9a9 9 0 0 1-9 9' },
+  { id: 'review', get nome() { return t('nav.review') }, icona: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6zM9 12l2 2 4-4' },
   { id: 'claude', claude: true, get nome() { return t('nav.claude') }, icona: 'M4 6h16v10H10l-4 4v-4H4zM8 11h.01M12 11h.01M16 11h.01' },
   { id: 'anteprima', claude: true, get nome() { return t('nav.anteprima') }, icona: 'M9 3L3 6v15l6-3 6 3 6-3V3l-6 3zM9 3v15M15 6v15' },
   { id: 'social', get nome() { return t('nav.social') }, icona: 'M4 20V10M10 20V4M16 20v-7M21 20H3', modulo: 'social' }

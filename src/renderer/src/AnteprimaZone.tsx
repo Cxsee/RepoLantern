@@ -51,7 +51,7 @@ function Segnala({ etichetta, onInvia }: { etichetta: string; onInvia: (testo: s
   )
 }
 
-function Conferma({ testo, avvia, onAvvia }: { testo: string; avvia: string; onAvvia: () => void }) {
+export function Conferma({ testo, avvia, onAvvia }: { testo: string; avvia: string; onAvvia: () => void }) {
   const [chiede, setChiede] = useState(false)
   if (!chiede) return <button onClick={() => setChiede(true)}>{avvia}</button>
   return (

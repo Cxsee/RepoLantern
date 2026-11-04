@@ -16,10 +16,12 @@ It works without AI and without an account. It never runs anything from your pro
 - **Search inside the code.** `Ctrl+K` searches tracked and untracked files, puts real code before tests and docs, and opens the file at the right line. A phrase that isn't in the code falls back to files with those words, and the screen says so. It matches words, not meaning: "upload a photo" won't find code that only talks about assets. Secret files such as `.env` are skipped.
 - **Home.** What changed recently and what is open.
 - **Branch.** Branches, worktrees and commits as a tree you can walk through, with their diffs.
+- **Review (experimental).** Checks your changes, a branch or the whole project for secrets and known risky patterns, without AI, and turns what you pick into to-dos. It never changes your code. Nothing found doesn't mean the code is safe.
 - **To do.** A list per repository, plus the to-dos already written in your docs.
 
 Optional, if you already have the [Claude Code](https://claude.com/product/claude-code) CLI installed and signed in:
 
+- **Review with Claude (experimental).** Like a careful reviewer on your changes: a summary, then findings with severity, confidence, what they need to happen and how to fix them. It runs read-only on a clean copy, secrets are removed first, and every cited line is checked against the code. The reasoning is still a model's judgement, so this is not a security audit. It uses your Claude plan: in our few tests, a change to 4 files cost about $0.10 and one to 15 files about $1.20 and 10 minutes.
 - **Claude.** A chat that runs through your own CLI. RepoLantern stores no keys and offers no login of its own.
 - **Experimental map.** A generated overview of the code. It can be wrong, so treat it as a starting point and check it against the code.
 
