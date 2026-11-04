@@ -35,7 +35,9 @@ Optional, if you already have the [Claude Code](https://claude.com/product/claud
 
 ## Install
 
-Build it yourself, with [Node.js](https://nodejs.org) 24 or later and Git:
+[Download the Windows installer](https://github.com/Cxsee/RepoLantern/releases/latest). You need [Git](https://git-scm.com) installed. The installer is not code-signed yet, so Windows SmartScreen may warn you: choose "More info", then "Run anyway".
+
+Or build it yourself, with [Node.js](https://nodejs.org) 24 or later and Git:
 
 ```bash
 npm ci
