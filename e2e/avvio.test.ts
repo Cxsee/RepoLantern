@@ -47,6 +47,8 @@ test('una voce aggiunta resta dopo il riavvio e le voci dei .md compaiono', asyn
   await page.getByRole('button', { name: 'Elimina' }).first().click()
   await page.getByRole('button', { name: 'Annulla' }).click()
   await page.getByText('prima voce').waitFor()
+  // Lo schermo si aggiorna prima del file: si aspetta la scrittura, senza contare sul tempo.
+  for (let i = 0; i < 50 && JSON.parse(readFileSync(file, 'utf8')).length !== 2; i++) await page.waitForTimeout(100)
   assert.equal(JSON.parse(readFileSync(file, 'utf8')).length, 2)
 
   // Un cambio di branch deve comparire prima dell'aggiornamento periodico da 10 secondi.
