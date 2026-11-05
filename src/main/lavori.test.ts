@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { Archivio } from './archivio.ts'
-import { argsSolaLettura, copiaPulita, Lavori, pulisciCopieVecchie } from './lavori.ts'
+import { argsSolaLettura, copiaPulita, Lavori, MODELLO_REVISIONE, modelloNonDisponibile, pulisciCopieVecchie } from './lavori.ts'
 
 // Un finto Claude: legge il prompt e si comporta come dice, senza consumare il piano.
 const FINTO = `
@@ -24,6 +24,7 @@ process.stdin.on('end', () => {
     setTimeout(() => {}, 120000)
     return
   }
+  if (dati.fai === 'modello' && !process.argv.includes('sonnet')) { scrivi({ type: 'result', subtype: 'success', is_error: true, result: 'There is an issue with the selected model (x). It may not exist or you may not have access to it.' }); return }
   if (dati.fai === 'muori') { console.error('qualcosa di storto'); process.exit(3) }
   scrivi({ type: 'result', subtype: dati.fai === 'errore' ? 'error_max_turns' : 'success', is_error: dati.fai === 'errore', result: 'Risultato di ' + dati.nome, total_cost_usd: 0.5, num_turns: 2, usage: { input_tokens: 10, output_tokens: 20 } })
 })
@@ -86,6 +87,30 @@ test('la ricetta di sola lettura non consente strumenti in più', () => {
   assert.ok(!a.includes('--allowedTools'))
   assert.ok(!a.includes('--chrome'))
   assert.match(a[a.indexOf('--settings') + 1], /\.env/)
+})
+
+test('la revisione usa il modello misurato e ripiega una sola volta se il piano non ce l ha', async () => {
+  const { repo, db, comando } = ambiente()
+  const lavori = await Lavori.apri(db, repo, { comando })
+  const buono = await lavori.revisiona('Buono', JSON.stringify({ nome: 'buono' }))
+  assert.equal(buono.stato, 'finito')
+  assert.equal(buono.modello, MODELLO_REVISIONE)
+  const ripiego = await lavori.revisiona('Ripiego', JSON.stringify({ fai: 'modello', nome: 'ripiego' }))
+  assert.equal(ripiego.stato, 'finito')
+  assert.equal(ripiego.modello, 'sonnet')
+  assert.equal(ripiego.esito, 'Risultato di ripiego')
+  const prima = db.lavori().length
+  const altro = await lavori.revisiona('Altro', JSON.stringify({ fai: 'errore', nome: 'altro' }))
+  assert.equal(altro.stato, 'errore')
+  assert.equal(db.lavori().length, prima + 1, 'un errore qualsiasi non fa ripartire il lavoro')
+  await lavori.chiudi()
+})
+
+test('riconosce solo gli errori che riguardano il modello', () => {
+  assert.ok(modelloNonDisponibile("There's an issue with the selected model (x). It may not exist or you may not have access to it."))
+  assert.ok(modelloNonDisponibile('Usage credits required for 1M context'))
+  assert.ok(!modelloNonDisponibile('Risultato sbagliato'))
+  assert.ok(!modelloNonDisponibile(null))
 })
 
 test('un lavoro gira sulla copia, registra consumo e durata, e la copia sparisce', async () => {

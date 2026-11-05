@@ -1,7 +1,7 @@
 {
   "name": "repolantern",
   "productName": "RepoLantern",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "private": true,
   "description": "Understand any codebase. Change it with confidence.",
   "author": "Andrea Caselli",

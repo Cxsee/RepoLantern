@@ -367,8 +367,7 @@ function registerIpc(): void {
     if (p.empty) return null
     const { lavori } = await apriArchivio(repo)
     const { prompt, skipped } = buildPrompt(p, await findRelated(repo, p))
-    const id = lavori.accoda(t('review.jobTitle'), prompt, undefined, undefined, p.commit)
-    const l = await lavori.attendi(id)
+    const l = await lavori.revisiona(t('review.jobTitle'), prompt, p.commit)
     if (l.stato !== 'finito') throw new Error(l.errore ?? t(`job.${l.stato}` as Chiave))
     const dati = estraiJson(l.esito ?? '')
     if (dati === null) throw new Error(t('review.badAnswer'))
@@ -384,7 +383,7 @@ function registerIpc(): void {
     const daControllare = findings.filter(needsChallenge).slice(0, 10)
     if (daControllare.length) {
       // If the second reader fails, the first result is still worth showing, and the screen says it wasn't double-checked.
-      const dopo = await lavori.attendi(lavori.accoda(t('review.jobTitleChallenge'), buildChallenge(daControllare, p), undefined, undefined, p.commit))
+      const dopo = await lavori.revisiona(t('review.jobTitleChallenge'), buildChallenge(daControllare, p), p.commit)
       costo += dopo.costo ?? 0
       durata += dopo.durata ?? 0
       const risposta = dopo.stato === 'finito' ? estraiJson(dopo.esito ?? '') : null
@@ -416,7 +415,7 @@ function registerIpc(): void {
     const testo = await readFile(vero, 'utf8')
     const commit = (await git(repo, 'rev-parse', '--verify', 'HEAD^{commit}')).trim()
     const { lavori } = await apriArchivio(repo)
-    const l = await lavori.attendi(lavori.accoda(t('fix.jobTitle'), buildFixPrompt(f, testo), undefined, undefined, commit))
+    const l = await lavori.revisiona(t('fix.jobTitle'), buildFixPrompt(f, testo), commit)
     if (l.stato !== 'finito') throw new Error(l.errore ?? t(`job.${l.stato}` as Chiave))
     const p = parseProposal(estraiJson(l.esito ?? ''))
     if (!p) throw new Error(t('fix.badAnswer'))

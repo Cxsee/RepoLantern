@@ -12,6 +12,11 @@ import { git, SEGRETO } from './scansione.ts'
 const run = promisify(execFile)
 const TEMPO_MASSIMO = 20 * 60 * 1000
 const MAX_ESITO = 1024 * 1024
+// Misurato il 5/11/2026 sulla Revisione: 32 difetti su 32 contro 31 dell'alias, senza segnalazioni inutili, più veloce e non più caro.
+export const MODELLO_REVISIONE = 'claude-sonnet-5-5'
+const MODELLO_RIPIEGO = 'sonnet'
+// Un piano può non avere quel modello: Claude Code lo dice subito e senza consumare nulla.
+export const modelloNonDisponibile = (errore: string | null | undefined): boolean => /issue with the selected model|may not have access to it|credits required/i.test(errore ?? '')
 
 // Provata contro scrittura, comandi, segreti e cartelle esterne. Nessun lavoro automatico ha Bash, e gira su una copia pulita.
 export function argsSolaLettura(modello: string): string[] {
@@ -122,6 +127,13 @@ export class Lavori {
       }
       prova()
     })
+  }
+
+  // Revisione e correzioni usano il modello misurato; se il piano non ce l'ha, si riprova una volta con quello predefinito.
+  async revisiona(titolo: string, prompt: string, commit?: string): Promise<Lavoro> {
+    const l = await this.attendi(this.accoda(titolo, prompt, MODELLO_REVISIONE, TEMPO_MASSIMO, commit))
+    if (l.stato !== 'errore' || !modelloNonDisponibile(l.errore)) return l
+    return this.attendi(this.accoda(titolo, prompt, MODELLO_RIPIEGO, TEMPO_MASSIMO, commit))
   }
 
   private sveglia(): void {
